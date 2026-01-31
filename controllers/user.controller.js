@@ -23,5 +23,45 @@ const profile = async (req, res) => {
     throw new Error(error);
   }
 };
+ const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { name, email, phone, imageUrl } = req.body;
 
-export { profile };
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return response(res, 404, "User not found");
+    }
+
+    // If email is being updated, check if it's already taken by another user
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser && existingUser._id.toString() !== userId) {
+        return response(res, 400, "Email is already in use by another account");
+      }
+    }
+
+    // Prepare update object with only provided fields
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+
+    // Update user profile
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    ).select("name email imageUrl phone role");
+
+    return response(res, 200, "Profile updated successfully", updatedUser);
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return response(res, 500, "Internal server error", error.message);
+  }
+};
+
+
+export { profile,updateProfile };
